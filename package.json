@@ -1,0 +1,12 @@
+{
+  "name": "hkmold-ai-tower",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:setup": "node --env-file=.env.local scripts/setup-db.mjs",
+    "db:reset": "node --env-file=.env.local scripts/setup-db.mjs --reset"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "1.2.0"
+  }
+}

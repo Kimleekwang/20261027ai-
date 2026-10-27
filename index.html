@@ -2,30 +2,98 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>20261027 AI교육</title>
-  <style>
-    :root { --bg: #f7f7f5; --fg: #1f2328; --muted: #6b7280; --accent: #2563eb; }
-    @media (prefers-color-scheme: dark) {
-      :root { --bg: #16181d; --fg: #e6e8eb; --muted: #9aa1ab; --accent: #60a5fa; }
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>한국몰드 AI 타워</title>
+  <meta name="description" content="한국몰드 품질팀·원가팀 AI 직원이 일하는 3D 가상 오피스">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%236d8bff'/%3E%3Ctext x='32' y='42' font-size='28' font-family='sans-serif' font-weight='700' fill='white' text-anchor='middle'%3EAI%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="office.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
     }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; min-height: 100vh; display: grid; place-items: center;
-      padding: 16px; background: var(--bg); color: var(--fg);
-      font-family: "Pretendard", "Malgun Gothic", system-ui, sans-serif;
-    }
-    main { max-width: 560px; text-align: center; }
-    h1 { margin: 0 0 12px; font-size: clamp(1.6rem, 5vw, 2.4rem); }
-    p { margin: 0 0 8px; color: var(--muted); line-height: 1.6; }
-    .badge { display: inline-block; margin-bottom: 16px; color: var(--accent); font-weight: 600; }
-  </style>
+  </script>
 </head>
 <body>
-  <main>
-    <div class="badge">한국몰드 · 2026.10.27</div>
-    <h1>AI 교육 실습 페이지</h1>
-    <p>GitHub에 푸시하면 Vercel이 자동으로 배포합니다.</p>
-  </main>
+  <div id="scene"></div>
+  <div id="labels"></div>
+
+  <header class="appbar">
+    <div class="logo">AI</div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-view="monitor">📊 <span>모니터링</span></button>
+      <button role="tab" data-view="tower" aria-selected="true">🏢 <span>타워</span></button>
+      <button role="tab" data-view="reports">📁 <span>보고함</span></button>
+    </nav>
+    <div class="clock" id="clock"></div>
+  </header>
+
+  <!-- 타워 조작 -->
+  <section class="controls" id="controls">
+    <div class="row" id="floor-chips"></div>
+    <div class="row"><div class="ticker" id="ticker"><b>지금</b><span>불러오는 중…</span></div></div>
+    <div class="row">
+      <button class="pill" id="btn-top" aria-pressed="false">🔭 위에서 보기</button>
+      <label class="pill check"><input type="checkbox" id="chk-rotate"> 자동 회전</label>
+      <label class="pill check"><input type="checkbox" id="chk-follow" checked> 이동 따라가기</label>
+    </div>
+    <div class="row">
+      <label class="pill select"><select id="sel-date" aria-label="날짜"></select></label>
+      <button class="pill" id="btn-replay">▶ 업무 흐름 재생</button>
+      <button class="pill accent" id="btn-request">＋ 업무 지시</button>
+    </div>
+  </section>
+
+  <!-- 모니터링 / 보고함 -->
+  <section class="view" id="view-monitor" hidden>
+    <div class="view-inner">
+      <div class="view-head">
+        <h1>모니터링</h1>
+        <span class="muted" id="monitor-date"></span>
+      </div>
+      <div class="cards" id="staff-cards"></div>
+      <h2>업무 기록</h2>
+      <ol class="timeline" id="timeline"></ol>
+    </div>
+  </section>
+  <section class="view" id="view-reports" hidden>
+    <div class="view-inner">
+      <div class="view-head"><h1>보고함</h1><span class="muted">AI 직원이 완성한 문서 목록</span></div>
+      <div class="report-list" id="report-list"></div>
+    </div>
+  </section>
+
+  <aside class="panel" id="panel" aria-live="polite"></aside>
+
+  <dialog id="dlg-request">
+    <form method="dialog" id="form-request">
+      <h2>업무 지시</h2>
+      <label>담당 AI 직원<select name="staff_id" id="req-staff"></select></label>
+      <label>업무 내용<input name="title" maxlength="80" required placeholder="예: 11월 1주차 불량 집계해 줘"></label>
+      <label>지시한 사람 (선택)<input name="requested_by" maxlength="20" placeholder="예: 원가팀 김이광"></label>
+      <p class="muted small">지시는 업무 기록에 남고 직원 상태가 ‘근무 중’으로 바뀌어요. 데모라서 AI가 실제로 처리하지는 않아요.</p>
+      <p class="error" id="req-error" hidden></p>
+      <div class="actions">
+        <button type="button" class="btn ghost" id="req-cancel">취소</button>
+        <button type="submit" class="btn primary" id="req-submit">지시하기</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" hidden></div>
+  <div class="loading" id="loading">타워 불러오는 중…</div>
+
+  <script>
+    // 모듈을 못 불러오면(오래된 브라우저, 네트워크 차단) 로딩 문구라도 바꿔 준다
+    setTimeout(function () {
+      if (!window.__officeReady) document.getElementById('loading').textContent = '3D 화면을 불러오지 못했어요. 새로고침하거나 최신 브라우저로 열어 주세요.';
+    }, 15000);
+  </script>
+  <script type="module" src="office.js"></script>
 </body>
 </html>
